@@ -1,0 +1,43 @@
+version: 0.2
+env:
+    git-credential-helper: yes # github에서 소스를 다운로드 
+    # 환경변수 선언!!!
+    variables:
+        ECS_CONTAINER_NAME: ecs-django-container # ecs 컨테이너명 
+        IMAGE_REPO_NAME: ecs-django-ecr # ecr의 등록된 이름
+        IMAGE_TAG: latest
+        AWS_DEFAULT_REGION: ap-northeast-2 # 서울 리전 설정 
+
+# 빌드 시작 
+phases:
+    # 빌드전 준비 
+    pre_build:
+        commands:
+            # ECR에 push를 위해서 AWS 로그인 필요 
+            - echo Logging in to Amazon ECR...
+            - aws --version
+            - ECR_PASSWORD=$(aws ecr get-login-password --region $AWS_DEFAULT_REGION)
+            - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+            - echo -n ${ECR_PASSWORD} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
+            - REPOSITORY_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}:${IMAGE_TAG}
+
+    build:
+        commands:
+            - echo Build started on `date`
+            - echo Building the Docker image....
+            - docker build -f ./Dockerfile -t ${IMAGE_REPO_NAME}:${IMAGE_TAG} .
+            - docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URI}
+
+    post_build:
+        commands:
+            # AWS ECR로 업로드...
+            - echo Package Source....
+            - docker push ${REPOSITORY_URI} 
+
+            # AWS ECS에 전달할 ECR 정보 json 생성 
+            - printf '[{"name":"%s", "imageUri":"%s"}]' ${ECS_CONTAINER_NAME} ${REPOSITORY_URI} > imagedefinitions.json
+            - cat imagedefinitions.json
+
+artifacts:
+    files:
+        - imagedefinitions.json

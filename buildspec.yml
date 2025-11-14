@@ -6,7 +6,8 @@ env:
         ECS_CONTAINER_NAME: ecs-django-container # ecs 컨테이너명 
         IMAGE_REPO_NAME: ecs-django-ecr # ecr의 등록된 이름
         IMAGE_TAG: latest
-        AWS_DEFAULT_REGION: ap-northeast-2 # 서울 리전 설정 
+        AWS_DEFAULT_REGION: ap-northeast-2 # 서울 리전 설정
+         
 
 # 빌드 시작 
 phases:
